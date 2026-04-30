@@ -1,0 +1,71 @@
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } 
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // PASTE YOUR FIREBASE CONFIG HERE
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const questCollection = collection(db, "quests");
+
+  // --- ADMIN LOGIN ---
+  window.checkAdmin = function() {
+    const pw = prompt("Enter Admin Key:");
+    if (pw === "1234") { // Your secret password
+      document.getElementById('adminPanel').style.display = 'block';
+      alert("Welcome, Monarch.");
+    }
+  };
+
+  // --- ADD QUEST TO CLOUD ---
+  window.saveQuest = async function() {
+    const title = document.getElementById('questTitle').value;
+    const target = document.getElementById('questTarget').value;
+    if (!title) return;
+
+    try {
+      await addDoc(questCollection, {
+        title: title,
+        target: target,
+        status: "ACTIVE",
+        timestamp: Date.now()
+      });
+      document.getElementById('questTitle').value = "";
+    } catch (e) {
+      console.error("Error adding quest: ", e);
+    }
+  };
+
+  // --- SYNC QUESTS IN REAL-TIME ---
+  // This part automatically updates EVERYONE'S phone instantly
+  const q = query(questCollection, orderBy("timestamp", "desc"));
+  onSnapshot(q, (snapshot) => {
+    const container = document.getElementById('questContainer');
+    container.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      container.innerHTML += `
+        <div class="quest-item">
+          <div class="target-label">TO: ${data.target}</div>
+          <div class="quest-title">${data.title}</div>
+          <button onclick="completeQuest('${doc.id}')" style="font-size:0.7rem; width:auto; padding:5px; margin:0; background:#30363d">COMPLETE</button>
+        </div>
+      `;
+    });
+  });
+
+  window.completeQuest = async function(id) {
+    await deleteDoc(doc(db, "quests", id));
+  };
+</script>
